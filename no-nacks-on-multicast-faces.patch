@@ -1,0 +1,50 @@
+diff --git a/daemon/fw/multicast-strategy.cpp b/daemon/fw/multicast-strategy.cpp
+index 044a124..d33e465 100644
+--- a/daemon/fw/multicast-strategy.cpp
++++ b/daemon/fw/multicast-strategy.cpp
+@@ -69,10 +69,6 @@ MulticastStrategy::afterReceiveInterest(const FaceEndpoint& ingress, const Inter
+   const fib::Entry& fibEntry = this->lookupFib(*pitEntry);
+   const fib::NextHopList& nexthops = fibEntry.getNextHops();
+ 
+-  int nEligibleNextHops = 0;
+-
+-  bool isSuppressed = false;
+-
+   for (const auto& nexthop : nexthops) {
+     Face& outFace = nexthop.getFace();
+ 
+@@ -80,7 +76,6 @@ MulticastStrategy::afterReceiveInterest(const FaceEndpoint& ingress, const Inter
+ 
+     if (suppressResult == RetxSuppressionResult::SUPPRESS) {
+       NFD_LOG_DEBUG(interest << " from=" << ingress << " to=" << outFace.getId() << " suppressed");
+-      isSuppressed = true;
+       continue;
+     }
+ 
+@@ -95,17 +90,6 @@ MulticastStrategy::afterReceiveInterest(const FaceEndpoint& ingress, const Inter
+     if (suppressResult == RetxSuppressionResult::FORWARD) {
+       m_retxSuppression.incrementIntervalForOutRecord(*pitEntry->getOutRecord(outFace, 0));
+     }
+-    ++nEligibleNextHops;
+-  }
+-
+-  if (0 && nEligibleNextHops == 0 && !isSuppressed) {
+-    NFD_LOG_DEBUG(interest << " from=" << ingress << " noNextHop");
+-
+-    lp::NackHeader nackHeader;
+-    nackHeader.setReason(lp::NackReason::NO_ROUTE);
+-    this->sendNack(pitEntry, ingress, nackHeader);
+-
+-    this->rejectPendingInterest(pitEntry);
+   }
+ }
+ 
+@@ -113,7 +97,7 @@ void
+ MulticastStrategy::afterReceiveNack(const FaceEndpoint& ingress, const lp::Nack& nack,
+                                     const shared_ptr<pit::Entry>& pitEntry)
+ {
+-  //this->processNack(ingress.face, nack, pitEntry);
++  // ignore nacks on multicast interfaces
+ }
+ 
+ } // namespace fw

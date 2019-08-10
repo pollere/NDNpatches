@@ -1,0 +1,82 @@
+diff --git a/daemon/table/fib-entry.cpp b/daemon/table/fib-entry.cpp
+index bb49979..ab9fe98 100644
+--- a/daemon/table/fib-entry.cpp
++++ b/daemon/table/fib-entry.cpp
+@@ -24,8 +24,11 @@
+  */
+ 
+ #include "fib-entry.hpp"
++#include "name-tree-entry.hpp"
++#include "common/logger.hpp"
+ 
+ namespace nfd {
++NFD_LOG_INIT(FibEntry);
+ namespace fib {
+ 
+ Entry::Entry(const Name& prefix)
+@@ -48,6 +51,32 @@ Entry::hasNextHop(const Face& face, EndpointId endpointId) const
+   return const_cast<Entry*>(this)->findNextHop(face, endpointId) != m_nextHops.end();
+ }
+ 
++void
++Entry::sendPendingInterests(const name_tree::Entry* nte, const NextHop& newHop)
++{
++  if (nte == nullptr || (!nte->hasChildren() && !nte->hasPitEntries())) {
++    return;
++  }
++  // send this entry's pending interests to 'newHop' then recurse
++  // on entry's children.
++  NFD_LOG_DEBUG("sendPendingInterests for " << nte->getName() << " to face "
++                << newHop.getFace().getId());
++  if (nte->getStrategyChoiceEntry() != nullptr) {
++    NFD_LOG_DEBUG("found strategy " <<
++      nte->getStrategyChoiceEntry()->getPrefix() << " " <<
++      nte->getStrategyChoiceEntry()->getStrategyInstanceName());
++  }
++  for (auto pe : nte->getPitEntries()) {
++    if (! pe->isSatisfied) {
++      newHop.getFace().sendInterest(pe->getInterest(), newHop.getEndpointId());
++      NFD_LOG_DEBUG("sent Interest " << pe->getName());
++    }
++  }
++  for (auto ce : nte->getChildren()) {
++    sendPendingInterests(ce, newHop);
++  }
++}
++
+ void
+ Entry::addOrUpdateNextHop(Face& face, EndpointId endpointId, uint64_t cost)
+ {
+@@ -55,8 +84,12 @@ Entry::addOrUpdateNextHop(Face& face, EndpointId endpointId, uint64_t cost)
+   if (it == m_nextHops.end()) {
+     m_nextHops.emplace_back(face, endpointId);
+     it = std::prev(m_nextHops.end());
++  } else if (it->getCost() == cost) {
++    // nothing changed
++    return;
+   }
+   it->setCost(cost);
++  this->sendPendingInterests(m_nameTreeEntry, *it);
+   this->sortNextHops();
+ }
+ 
+diff --git a/daemon/table/fib-entry.hpp b/daemon/table/fib-entry.hpp
+index e0edcc0..5b184f4 100644
+--- a/daemon/table/fib-entry.hpp
++++ b/daemon/table/fib-entry.hpp
+@@ -98,6 +98,15 @@ public:
+   removeNextHopByFace(const Face& face);
+ 
+ private:
++  /** \brief forward pending interests to a newly added hop
++   *
++   *  All the pending interests associated with the name tree 
++   *  entry \p nte and its children are sent to \p newHop's
++   *  \p face and \p endpointId.
++   */
++  void
++  sendPendingInterests(const name_tree::Entry* nte, const NextHop& newHop);
++
+   /** \note This method is non-const because mutable iterators are needed by callers.
+    */
+   NextHopList::iterator
