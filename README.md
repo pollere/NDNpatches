@@ -8,6 +8,8 @@ current version NFD (github.com/named-data/NFD v0.6.6+ commit 07f2e2f
 July 22, 2019). They should "git apply" cleanly to most recent
 versions of NFD.
 
+Once NFD is running, it will be necessary to set up a route to the multicast face. Run "nfdc status report" and look for the the udp4 multicast face_id (e.g., 259) and then "nfdc route add localnet face_id"
+
 **no-nacks-on-multicast-faces.patch** disables NACK processing on multicast faces. Currently an NFD will send a NACK in response to an arriving Interest when it has no faces (including the faces created by local apps' prefix registrations) to forward it on. This makes multicast Interests extremely unreliable. Consider host A's multicast Interest "/localnet/foo" being received by hosts B and C. B has a local process registered for "/localnet/foo" so B will forward the Interest to it but C does not so it immediately multicasts a NACK which causes A to discard the Interest. Sometime later the process on B sends a Data responding to the Interest which B's NFD multicasts (since the NACK didn't kill the pending interest on B) but A discards because it has no pending Interest. Clearly *no* communication between A & B is possible since C's NACKs always arrive before A or B's Data's.
 Since link-level NACKs can often do harm by killing off Interests that might otherwise be satisfied before they expire, if deployed, there should be a per-face flag to enable them and the flag should default to "disabled".
 
