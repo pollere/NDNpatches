@@ -1,8 +1,24 @@
 diff --git a/daemon/fw/multicast-strategy.cpp b/daemon/fw/multicast-strategy.cpp
-index 044a124..d33e465 100644
+index d15063e4..e2a9959f 100644
 --- a/daemon/fw/multicast-strategy.cpp
 +++ b/daemon/fw/multicast-strategy.cpp
-@@ -69,10 +69,6 @@ MulticastStrategy::afterReceiveInterest(const FaceEndpoint& ingress, const Inter
+@@ -34,15 +34,8 @@ NFD_REGISTER_STRATEGY(MulticastStrategy);
+ 
+ NFD_LOG_INIT(MulticastStrategy);
+ 
+-const time::milliseconds MulticastStrategy::RETX_SUPPRESSION_INITIAL(10);
+-const time::milliseconds MulticastStrategy::RETX_SUPPRESSION_MAX(250);
+-
+ MulticastStrategy::MulticastStrategy(Forwarder& forwarder, const Name& name)
+   : Strategy(forwarder)
+-  , ProcessNackTraits(this)
+-  , m_retxSuppression(RETX_SUPPRESSION_INITIAL,
+-                      RetxSuppressionExponential::DEFAULT_MULTIPLIER,
+-                      RETX_SUPPRESSION_MAX)
+ {
+   ParsedInstanceName parsed = parseInstanceName(name);
+   if (!parsed.parameters.empty()) {
+@@ -69,21 +62,9 @@ MulticastStrategy::afterReceiveInterest(const FaceEndpoint& ingress, const Inter
    const fib::Entry& fibEntry = this->lookupFib(*pitEntry);
    const fib::NextHopList& nexthops = fibEntry.getNextHops();
  
@@ -13,22 +29,29 @@ index 044a124..d33e465 100644
    for (const auto& nexthop : nexthops) {
      Face& outFace = nexthop.getFace();
  
-@@ -80,7 +76,6 @@ MulticastStrategy::afterReceiveInterest(const FaceEndpoint& ingress, const Inter
- 
-     if (suppressResult == RetxSuppressionResult::SUPPRESS) {
-       NFD_LOG_DEBUG(interest << " from=" << ingress << " to=" << outFace.getId() << " suppressed");
+-    RetxSuppressionResult suppressResult = m_retxSuppression.decidePerUpstream(*pitEntry, outFace);
+-
+-    if (suppressResult == RetxSuppressionResult::SUPPRESS) {
+-      NFD_LOG_DEBUG(interest << " from=" << ingress << " to=" << outFace.getId() << " suppressed");
 -      isSuppressed = true;
+-      continue;
+-    }
+-
+     if ((outFace.getId() == ingress.face.getId() && outFace.getLinkType() != ndn::nfd::LINK_TYPE_AD_HOC) ||
+         wouldViolateScope(ingress.face, interest, outFace)) {
        continue;
-     }
+@@ -91,21 +72,6 @@ MulticastStrategy::afterReceiveInterest(const FaceEndpoint& ingress, const Inter
  
-@@ -95,17 +90,6 @@ MulticastStrategy::afterReceiveInterest(const FaceEndpoint& ingress, const Inter
-     if (suppressResult == RetxSuppressionResult::FORWARD) {
-       m_retxSuppression.incrementIntervalForOutRecord(*pitEntry->getOutRecord(outFace, 0));
-     }
+     this->sendInterest(pitEntry, FaceEndpoint(outFace, 0), interest);
+     NFD_LOG_DEBUG(interest << " from=" << ingress << " pitEntry-to=" << outFace.getId());
+-
+-    if (suppressResult == RetxSuppressionResult::FORWARD) {
+-      m_retxSuppression.incrementIntervalForOutRecord(*pitEntry->getOutRecord(outFace, 0));
+-    }
 -    ++nEligibleNextHops;
 -  }
 -
--  if (0 && nEligibleNextHops == 0 && !isSuppressed) {
+-  if (nEligibleNextHops == 0 && !isSuppressed) {
 -    NFD_LOG_DEBUG(interest << " from=" << ingress << " noNextHop");
 -
 -    lp::NackHeader nackHeader;
@@ -39,12 +62,48 @@ index 044a124..d33e465 100644
    }
  }
  
-@@ -113,7 +97,7 @@ void
+@@ -113,7 +79,7 @@ void
  MulticastStrategy::afterReceiveNack(const FaceEndpoint& ingress, const lp::Nack& nack,
                                      const shared_ptr<pit::Entry>& pitEntry)
  {
--  //this->processNack(ingress.face, nack, pitEntry);
+-  this->processNack(ingress.face, nack, pitEntry);
 +  // ignore nacks on multicast interfaces
  }
+ 
+ } // namespace fw
+diff --git a/daemon/fw/multicast-strategy.hpp b/daemon/fw/multicast-strategy.hpp
+index 15f0d0cc..a016543d 100644
+--- a/daemon/fw/multicast-strategy.hpp
++++ b/daemon/fw/multicast-strategy.hpp
+@@ -27,8 +27,6 @@
+ #define NFD_DAEMON_FW_MULTICAST_STRATEGY_HPP
+ 
+ #include "strategy.hpp"
+-#include "process-nack-traits.hpp"
+-#include "retx-suppression-exponential.hpp"
+ 
+ namespace nfd {
+ namespace fw {
+@@ -38,7 +36,6 @@ namespace fw {
+  *  \note This strategy is not EndpointId-aware.
+  */
+ class MulticastStrategy : public Strategy
+-                        , public ProcessNackTraits<MulticastStrategy>
+ {
+ public:
+   explicit
+@@ -54,14 +51,6 @@ public:
+   void
+   afterReceiveNack(const FaceEndpoint& ingress, const lp::Nack& nack,
+                    const shared_ptr<pit::Entry>& pitEntry) override;
+-
+-private:
+-  friend ProcessNackTraits<MulticastStrategy>;
+-  RetxSuppressionExponential m_retxSuppression;
+-
+-PUBLIC_WITH_TESTS_ELSE_PRIVATE:
+-  static const time::milliseconds RETX_SUPPRESSION_INITIAL;
+-  static const time::milliseconds RETX_SUPPRESSION_MAX;
+ };
  
  } // namespace fw

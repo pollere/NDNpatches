@@ -70,7 +70,7 @@ index e0edcc0..5b184f4 100644
  private:
 +  /** \brief forward pending interests to a newly added hop
 +   *
-+   *  All the pending interests associated with the name tree 
++   *  All the pending interests associated with the name tree
 +   *  entry \p nte and its children are sent to \p newHop's
 +   *  \p face and \p endpointId.
 +   */

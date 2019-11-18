@@ -1,0 +1,75 @@
+diff --git a/.waf-tools/default-compiler-flags.py b/.waf-tools/default-compiler-flags.py
+index 9e045c3f..38e40cde 100644
+--- a/.waf-tools/default-compiler-flags.py
++++ b/.waf-tools/default-compiler-flags.py
+@@ -128,7 +128,7 @@ class GccBasicFlags(CompilerFlags):
+     """
+     def getGeneralFlags(self, conf):
+         flags = super(GccBasicFlags, self).getGeneralFlags(conf)
+-        flags['CXXFLAGS'] += ['-std=c++14']
++        flags['CXXFLAGS'] += ['-std=c++17']
+         if Utils.unversioned_sys_platform() == 'linux':
+             flags['LINKFLAGS'] += ['-fuse-ld=gold']
+         elif Utils.unversioned_sys_platform() == 'freebsd':
+@@ -144,7 +144,7 @@ class GccBasicFlags(CompilerFlags):
+                               '-Wall',
+                               '-Wextra',
+                               '-Werror',
+-                              '-Wnon-virtual-dtor',
++                              '-Wno-non-virtual-dtor', # silence boost warnings
+                               '-Wno-error=deprecated-declarations', # Bug #3795
+                               '-Wno-error=maybe-uninitialized', # Bug #1615
+                               '-Wno-unused-parameter',
+@@ -159,7 +159,7 @@ class GccBasicFlags(CompilerFlags):
+                               '-pedantic',
+                               '-Wall',
+                               '-Wextra',
+-                              '-Wnon-virtual-dtor',
++                              '-Wno-non-virtual-dtor', # silence boost warnings
+                               '-Wno-unused-parameter',
+                               ]
+         flags['LINKFLAGS'] += ['-Wl,-O1']
+@@ -190,8 +190,8 @@ class ClangFlags(GccBasicFlags):
+     def getDebugFlags(self, conf):
+         flags = super(ClangFlags, self).getDebugFlags(conf)
+         flags['CXXFLAGS'] += ['-fcolor-diagnostics',
+-                              '-Wextra-semi',
+-                              '-Wundefined-func-template',
++                              '-Wno-extra-semi', # silence boost warnings
++                              '-Wno-undefined-func-template', # silence boost
+                               '-Wno-unused-local-typedef', # Bugs #2657 and #3209
+                               ]
+         version = self.getCompilerVersion(conf)
+@@ -204,8 +204,8 @@ class ClangFlags(GccBasicFlags):
+     def getOptimizedFlags(self, conf):
+         flags = super(ClangFlags, self).getOptimizedFlags(conf)
+         flags['CXXFLAGS'] += ['-fcolor-diagnostics',
+-                              '-Wextra-semi',
+-                              '-Wundefined-func-template',
++                              '-Wno-extra-semi', # silence boost warnings
++                              '-Wno-undefined-func-template', # silence boost
+                               '-Wno-unused-local-typedef', # Bugs #2657 and #3209
+                               ]
+         version = self.getCompilerVersion(conf)
+diff --git a/wscript b/wscript
+index ffffd5e5..00477215 100644
+--- a/wscript
++++ b/wscript
+@@ -308,7 +308,7 @@ def version(ctx):
+     except (OSError, subprocess.CalledProcessError):
+         pass
+ 
+-    versionFile = ctx.path.find_node('VERSION')
++    versionFile = ctx.path.find_node('VERSION.nfd')
+     if not gotVersionFromGit and versionFile is not None:
+         try:
+             Context.g_module.VERSION = versionFile.read()
+@@ -325,7 +325,7 @@ def version(ctx):
+         except EnvironmentError as e:
+             Logs.warn('%s exists but is not readable (%s)' % (versionFile, e.strerror))
+     else:
+-        versionFile = ctx.path.make_node('VERSION')
++        versionFile = ctx.path.make_node('VERSION.nfd')
+ 
+     try:
+         versionFile.write(Context.g_module.VERSION)
