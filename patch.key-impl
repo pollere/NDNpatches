@@ -1,0 +1,18 @@
+diff --git a/ndn-cxx/security/pib/impl/key-impl.cpp b/ndn-cxx/security/pib/impl/key-impl.cpp
+index 79c03004..36836208 100644
+--- a/ndn-cxx/security/pib/impl/key-impl.cpp
++++ b/ndn-cxx/security/pib/impl/key-impl.cpp
+@@ -63,7 +63,12 @@ KeyImpl::KeyImpl(const Name& keyName, shared_ptr<PibImpl> pibImpl)
+   m_key = m_pib->getKeyBits(m_keyName);
+ 
+   transform::PublicKey key;
+-  key.loadPkcs8(m_key.data(), m_key.size());
++  try {
++    key.loadPkcs8(m_key.data(), m_key.size());
++  }
++  catch (const transform::PublicKey::Error&) {
++      // ignore unrecognized key types
++  }
+   m_keyType = key.getKeyType();
+ }
+ 
