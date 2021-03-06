@@ -17,9 +17,10 @@ Since link-level NACKs can often do harm by killing off Interests that might oth
 To test using multicast-based tools (like the DNMP suite), it will be necessary to set up a a prefix that routes to a multicast face.  For example, DNMP uses prefix "localnet" for local network(s) multicast.  To set it up, once NFD is running, run `nfdc status report` and look for the the udp4 (or 6) multicast face_id (e.g., 259) and then `nfdc route add localnet face_id`. (Note: Google WiFi will only do IPv6 multicast, so use the udp6 multicast face_id if you have Google WiFi.) It is also necessary to make sure that NFD really uses the multicast strategy instead of the "best route" strategy. This can be ensured by adding the following line to your nfd.conf file:
     /localnet /localhost/nfd/strategy/multicast
 
+**patch.key-impl** This patch to ndn-cxx is necessary to stop the ndnsec tool from aborting when it encounters a key format it doesn't a key type it doesn't recognize (such as a schema or an EdDSA key). This is necessary to use the Data-Centric Toolkit in the DCT repo.
+
 **patch.ndn-ind** patch against [https://github.com/operantnetworks](https://github.com/operantnetworks) ndn-ind HEAD commit b72bbf7e that does two things:
 
 -  adds an 'ndn-ind/async-face.hpp' object that supports single-threaded, asynchronous (callback-driven) i/o and timers without the locking and serialization overhead of threadsafe-face.
 -  adds /opt/local/{include,lib} to libndn-ind.pc to support open source packages installed by MacPorts in addition to Homebrew packages from /usr/local.
-    
-**patch.key-impl** This patch to ndn-cxx is necessary to stop the ndnsec tool from aborting when it encounters a key format it doesn't a key type it doesn't recognize (such as a schema or an EdDSA key). This is necessary to use the Data-Centric Toolkit in the DCT repo.
+  
