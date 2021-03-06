@@ -21,3 +21,5 @@ To test using multicast-based tools (like the DNMP suite), it will be necessary 
 
 -  adds an 'ndn-ind/async-face.hpp' object that supports single-threaded, asynchronous (callback-driven) i/o and timers without the locking and serialization overhead of threadsafe-face.
 -  adds /opt/local/{include,lib} to libndn-ind.pc to support open source packages installed by MacPorts in addition to Homebrew packages from /usr/local.
+    
+**patch.key-impl** This patch to ndn-cxx is necessary to stop the ndnsec tool from aborting when it encounters a key format it doesn't a key type it doesn't recognize (such as a schema or an EdDSA key). This is necessary to use the Data-Centric Toolkit in the DCT repo.
