@@ -1,0 +1,34 @@
+Date: Tue, 1 Dec 2020 17:25:54 -0800
+Subject: [PATCH] The
+ https://redmine.named-data.net/projects/ndn-cxx/wiki/CommandInterest
+ stop-and-wait mechanism is intended to prevent replay attacks but it also
+ prevents re-use of a signing cert within a 1ms window. While the ndn-cxx
+ library struggles to send back-to-back Interests in less than a millisecond,
+ other NDN implementations perform better and this check causes command
+ interests, such as a startup burst of 'register's, to randomly fail NFD's
+ validation check. The security impact of the 1ms increase in replay window
+ seems outweighed by the advantages of functional command interests.
+
+---
+ ndn-cxx/security/v2/validation-policy-command-interest.cpp | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/ndn-cxx/security/v2/validation-policy-command-interest.cpp b/ndn-cxx/security/v2/validation-policy-command-interest.cpp
+index 52f276db..ec6262eb 100644
+--- a/ndn-cxx/security/v2/validation-policy-command-interest.cpp
++++ b/ndn-cxx/security/v2/validation-policy-command-interest.cpp
+@@ -115,10 +115,9 @@ ValidationPolicyCommandInterest::checkTimestamp(const shared_ptr<ValidationState
+                  "Timestamp is outside the grace period for key " + keyName.toUri()});
+     return false;
+   }
+-
+   auto it = m_index.find(keyName);
+   if (it != m_index.end()) {
+-    if (timestamp <= it->timestamp) {
++    if (timestamp < it->timestamp) {
+       state->fail({ValidationError::POLICY_ERROR,
+                    "Timestamp is reordered for key " + keyName.toUri()});
+       return false;
+-- 
+2.29.2
+

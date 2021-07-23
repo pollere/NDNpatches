@@ -1,6 +1,6 @@
 # NFD patches to fix multicast Interests and improve Interest satisfaction time
 
-### Van Jacobson, Mon Nov 18 10:00:24 PST 2019
+### Van Jacobson, Mon Nov 18 10:00:24 PST 2019 (original patches: updates below)
 
 These are some small patches to fix misbehavior we have observed in the
 current version NFD (github.com/named-data/NFD v0.6.6+ commit 07f2e2f
@@ -23,6 +23,16 @@ To clarify, this appears to be a clear bug in the KeyImpl constructor. It attemp
 
 **patch.ndn-ind** patch against [https://github.com/operantnetworks](https://github.com/operantnetworks) ndn-ind HEAD commit b72bbf7e that does two things:
 
--  adds an 'ndn-ind/async-face.hpp' object that supports single-threaded, asynchronous (callback-driven) i/o and timers without the locking and serialization overhead of threadsafe-face.
--  adds /opt/local/{include,lib} to libndn-ind.pc to support open source packages installed by MacPorts in addition to Homebrew packages from /usr/local.
-  
+- adds an 'ndn-ind/async-face.hpp' object that supports single-threaded, asynchronous (callback-driven) i/o and timers without the locking and serialization overhead of threadsafe-face.
+
+- adds /opt/local/{include,lib} to libndn-ind.pc to support open source packages installed by MacPorts in addition to Homebrew packages from /usr/local.
+
+**patch.nfd-register-error** This patch (created Tue, 1 Dec 2020 17:25:54 -0800) to ndn-cxx is necessary to prevent the registration errors from NFD when an application is registering multiple prefixes.  The
+ https://redmine.named-data.net/projects/ndn-cxx/wiki/CommandInterest
+ stop-and-wait mechanism is intended to prevent replay attacks but it also
+ prevents re-use of a signing cert within a 1ms window. While the ndn-cxx
+ library struggles to send back-to-back Interests in less than a millisecond,
+ other NDN implementations perform better and this check causes command
+ interests, such as a startup burst of 'register's, to randomly fail NFD's
+ validation check. The security impact of the 1ms increase in replay window
+ seems outweighed by the advantages of functional command interests.
