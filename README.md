@@ -1,5 +1,7 @@
 # NFD patches to fix multicast Interests and improve Interest satisfaction time
 
+(WIth release of DCT version 5, these patches are no longer required to run DCT applications.)
+
 ### Van Jacobson, Mon Nov 18 10:00:24 PST 2019 (original patches: updates below)
 
 These are some small patches to fix misbehavior we have observed in the
